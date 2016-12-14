@@ -1,61 +1,59 @@
-import requests
-import bs4
-import urllib.request
-import string
-import getpass
-import re
-import sys
-import taglib
-import eyed3.id3.tag
-import os
-import mutagen.id3
-from mutagen.id3 import ID3NoHeaderError
+#importing all the required libraries
+#if not already existed download them using pip
+import requests   #for requesting a website
+import bs4          #this is for accessing the source code of a site
+import urllib.request   #thsi is another library for requesting site
+import string           #to make string fucntions available          
+import re               #for regular expressions
+import sys              #for system functions
+import taglib           #to access the tags    
+import os               #to access files
+import mutagen.id3      #to modily view id3 tags in a mp3 file
+from mutagen.id3 import ID3NoHeaderError    
 from bs4 import BeautifulSoup
-import os
-from mutagen.id3 import ID3, TIT2, TALB, TPE1, TPE2, COMM, USLT, TCOM, TCON, TDRC
-fpath=(os.path.abspath(''))
-keyerror=0
-embedded=0
-failed=0
-headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 6.0; WOW64; rv:24.0) Gecko/20100101 Firefox/24.0' }
-for fn in os.listdir(fpath):
-    run_once=0
-    lyrics=None
-    fname = os.path.join(fpath, fn)
+from mutagen.id3 import ID3, TIT2, TALB, TPE1, TPE2, COMM, USLT, TCOM, TCON, TDRC #various tags for a mp3 file
+fpath=(os.path.abspath('')) #it gets the absolute path i.e, where the code is placed that path is taken
+keyerror=0              #initialization
+embedded=0              #initialization
+failed=0                #initialization
+headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 6.0; WOW64; rv:24.0) Gecko/20100101 Firefox/24.0' } #header of useragent to access sites
+
+for fn in os.listdir(fpath):    #to traverse through all the files in that directory
+    run_once=0                  #initialization
+    lyrics=None                 #initialization
+    fname = os.path.join(fpath, fn)    #assign the path of that respective file
     
-    if fname.lower().endswith('.mp3'):
+    if fname.lower().endswith('.mp3'): #check if that file is mp3 or not
         print(fname)
         try:
-            tags=ID3(fname)
+            tags=ID3(fname)             #create ID3 header for that .mp3 file
             try:
-                title=str(tags['TIT2'])
-                url='https://www.google.co.in/search?num=20&site=&source=hp&q=A-Z lyrics '+title+''
+                title=str(tags['TIT2']) #get the titile of that song
+                url='https://www.google.co.in/search?num=20&site=&source=hp&q=A-Z lyrics '+title+''     #append the title to that google search link
                 #print(url)
-                source_code = requests.get(url)
-                plain_text = source_code.text
-                soup = BeautifulSoup(plain_text,"lxml")
-                for h3 in soup.find_all("h3",{'class':'r'}):
-                    if run_once==0:
-                        link_az=h3.find('a')['href']
+                source_code = requests.get(url)         #give that link to the requests so that it could access the site
+                plain_text = source_code.text           #convert all the source code into text file
+                soup = BeautifulSoup(plain_text,"lxml") #using BeautifulSoup convert text to lxml
+                for h3 in soup.find_all("h3",{'class':'r'}):    #find every h3 tag with class as r
+                    if run_once==0:                             #to get the first result
+                        link_az=h3.find('a')['href']            #get the first reults's URL
                         #print(link_az)
-                        sep='/url?q='
-                        link_right=link_az.split(sep)[1]
-                        sep='&sa'
+                        sep='/url?q='                           #as the reult is with unnecessary charachters
+                        link_right=link_az.split(sep)[1]        #we remove them
+                        sep='&sa'                   
                         link_final=link_right.split(sep)[0]
-                        #link_final=link_right.split('html')[0]
-                        
-
+                        #link_final=link_right.split('html')[0] #get the first URL after trimming them
                         link_final=link_final.split('\n')[0]           
-                        check=link_final.find('azlyrics')
+                        check=link_final.find('azlyrics')       #checking if the lyrics is from azlyrics or not
                         
                         if(check!=-1):
                             #print(link_final)
-                            url=link_final
+                            url=link_final                      #to acccess the source code of the azlyrics
                             source_code = requests.get(url,headers=headers)
                             plain_text = source_code.text
                             #print(plain_text)
                             soup = BeautifulSoup(plain_text,"lxml")
-                            for script in soup(["script", "style"]):
+                            for script in soup(["script", "style"]):    
                                 script.extract()
                             text = soup.get_text()
                             lines = (line.strip() for line in text.splitlines())
