@@ -1,0 +1,106 @@
+import requests
+import bs4
+import urllib.request
+import string
+import getpass
+import re
+import sys
+import taglib
+import eyed3.id3.tag
+import os
+import mutagen.id3
+from mutagen.id3 import ID3NoHeaderError
+from bs4 import BeautifulSoup
+import os
+from mutagen.id3 import ID3, TIT2, TALB, TPE1, TPE2, COMM, USLT, TCOM, TCON, TDRC
+fpath=(os.path.abspath(''))
+keyerror=0
+embedded=0
+failed=0
+headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 6.0; WOW64; rv:24.0) Gecko/20100101 Firefox/24.0' }
+for fn in os.listdir(fpath):
+    run_once=0
+    lyrics=None
+    fname = os.path.join(fpath, fn)
+    
+    if fname.lower().endswith('.mp3'):
+        print(fname)
+        try:
+            tags=ID3(fname)
+            try:
+                title=str(tags['TIT2'])
+                url='https://www.google.co.in/search?num=20&site=&source=hp&q=A-Z lyrics '+title+''
+                #print(url)
+                source_code = requests.get(url)
+                plain_text = source_code.text
+                soup = BeautifulSoup(plain_text,"lxml")
+                for h3 in soup.find_all("h3",{'class':'r'}):
+                    if run_once==0:
+                        link_az=h3.find('a')['href']
+                        #print(link_az)
+                        sep='/url?q='
+                        link_right=link_az.split(sep)[1]
+                        sep='&sa'
+                        link_final=link_right.split(sep)[0]
+                        #link_final=link_right.split('html')[0]
+                        
+
+                        link_final=link_final.split('\n')[0]           
+                        check=link_final.find('azlyrics')
+                        
+                        if(check!=-1):
+                            #print(link_final)
+                            url=link_final
+                            source_code = requests.get(url,headers=headers)
+                            plain_text = source_code.text
+                            #print(plain_text)
+                            soup = BeautifulSoup(plain_text,"lxml")
+                            for script in soup(["script", "style"]):
+                                script.extract()
+                            text = soup.get_text()
+                            lines = (line.strip() for line in text.splitlines())
+                            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))    
+                            text = '\n'.join(chunk for chunk in chunks if chunk)
+                            
+                            text=text[text.find('Print'):]
+                            text=text[:text.find('Visit www.azlyrics.com for these lyrics')]
+                            lyrics=text
+                            run_once=1
+                            #print(lyrics)
+                            #for fn in os.listdir(fpath):
+                            if run_once==1:
+                                fname = os.path.join(fpath, fn)
+                                #print(fname)
+                                if fname.lower().endswith('.mp3'):
+                                    tags=ID3(fname)
+                                    if len(tags.getall('USLT::\'en\'')) != 0:
+                                        tags.delall('USLT::\'en\'')
+                                        print("removing lyrics")
+                                        tags.save(fname)
+                                        tags.save()
+                                    tags["USLT"]=USLT(encoding=0, lang="eng", text=lyrics)       
+                                    tags.save(fname)
+                                    tags.save()
+                                    run_once=2
+                                    #print(tags['USLT'])
+                                    lol=str(tags['USLT'])
+
+                                    if(len(lol)<50):
+                                    
+                                        print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<=FAILED='+str(failed)+'>>>>>>>>>>>>>>>>>>>>>>')
+                                        failed=failed+1
+                                    else:
+                                        print('==========================>Lyrics Embedded='+str(embedded)+'=================>')
+                                        embedded=embedded+1
+            except KeyError:
+                keyerror=keyerror+1
+                print('hello')
+            except ConnectionError:
+                print('failed')
+        except ID3NoHeaderError:
+            print("lol sorry")
+print('failed objects are---------------')
+print(failed)
+print('Successful are----------------')
+print(embedded)
+    
